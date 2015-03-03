@@ -22,25 +22,44 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+//TODO: determine login status
+var access = false;
 
-app.get('/', 
+app.get('/',
 function(req, res) {
-  res.render('index');
+  if(access) {
+    res.render('index');
+  } else {
+    res.redirect('login');
+  }
 });
 
-app.get('/create', 
+app.get('/login',
 function(req, res) {
-  res.render('index');
+  res.render('login');
 });
 
-app.get('/links', 
+app.get('/create',
 function(req, res) {
-  Links.reset().fetch().then(function(links) {
-    res.send(200, links.models);
-  });
+  if(access) {
+    res.render('index');
+  } else {
+    res.redirect('login');
+  }
 });
 
-app.post('/links', 
+app.get('/links',
+function(req, res) {
+  if(access) {
+    Links.reset().fetch().then(function(links) {
+      res.send(200, links.models);
+    });
+  } else {
+    res.redirect('login');
+  }
+});
+
+app.post('/links',
 function(req, res) {
   var uri = req.body.url;
 
@@ -78,6 +97,26 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+
+app.post('/signup', function(req, res) {
+  var un = req.body.username;
+  var pw = req.body.password;
+  console.log(pw);
+  console.log(util.genHash);
+  var saltHash = util.genHash(pw);
+  console.log(saltHash);
+  new User({username: un, hash: saltHash.hash, salt: saltHash.salt}).fetch().then(function(user){
+    user.save().then(function() {
+      db.knex('users')
+        .insert([
+          { username: user.get('username') },
+          { hash: user.get('hash') },
+          { salt: user.get('salt') }
+        ]);
+    });
+  console.log(user);
+  });
+});
 
 
 /************************************************************/
