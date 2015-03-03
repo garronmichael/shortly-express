@@ -97,25 +97,12 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
-
 app.post('/signup', function(req, res) {
   var un = req.body.username;
   var pw = req.body.password;
-  console.log(pw);
-  console.log(util.genHash);
-  var saltHash = util.genHash(pw);
-  console.log(saltHash);
-  new User({username: un, hash: saltHash.hash, salt: saltHash.salt}).fetch().then(function(user){
-    user.save().then(function() {
-      db.knex('users')
-        .insert([
-          { username: user.get('username') },
-          { hash: user.get('hash') },
-          { salt: user.get('salt') }
-        ]);
-    });
-  console.log(user);
-  });
+  new User({username: un}).save().then(function(user){
+    user.genHash(pw);
+  }).save();
 });
 
 
