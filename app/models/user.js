@@ -5,14 +5,17 @@ var utils = require('../../lib/utility.js');
 
 var User = db.Model.extend({
   tableName: 'users',
-  genHash: function(password) {
-    bcrypt.genSalt(10, function(err, salt) {
-      bcrypt.hash(password, salt, null, function(err, hash) {
-        this.hash = hash;
-        this.salt = salt;
+
+  initialize: function(password) {
+    this.on('creating', function(model, attrs, options) {
+      bcrypt.genSalt(10, function(err, salt) {
+        bcrypt.hash(password, salt, null, function(err, hash) {
+          model.set({'hash': hash, 'salt': salt});
+        });
       });
     });
   }
+
 });
 
 module.exports = User;

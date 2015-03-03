@@ -100,10 +100,11 @@ function(req, res) {
 app.post('/signup', function(req, res) {
   var un = req.body.username;
   var pw = req.body.password;
-  new User( {username: un} ).save().then(function(user){
-    user.genHash(pw);
-  }).save();
+  new User( {username: un}, {password: pw} ).save().then(function(user){
+    res.send(200, user);
+  });
 });
+
 
 
 /************************************************************/
