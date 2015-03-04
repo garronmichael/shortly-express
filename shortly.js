@@ -22,45 +22,29 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
-//TODO: determine login status
-var access = false;
 
-app.get('/',
-function(req, res) {
-  if(access) {
+var session = require('express-session');
+app.use(session({
+  secret: 'super secret password',
+  resave: false,
+  saveUninitialized: true
+}));
+
+app.get('/', util.checkUser, function(req, res) {
+  res.render('index');
+});
+
+app.get('/create', util.checkUser, function(req, res) {
     res.render('index');
-  } else {
-    res.redirect('login');
-  }
 });
 
-app.get('/login',
-function(req, res) {
-  res.render('login');
+app.get('/links', util.checkUser, function(req, res) {
+  Links.reset().fetch().then(function(links) {
+    res.send(200, links.models);
+  });
 });
 
-app.get('/create',
-function(req, res) {
-  if(access) {
-    res.render('index');
-  } else {
-    res.redirect('login');
-  }
-});
-
-app.get('/links',
-function(req, res) {
-  if(access) {
-    Links.reset().fetch().then(function(links) {
-      res.send(200, links.models);
-    });
-  } else {
-    res.redirect('login');
-  }
-});
-
-app.post('/links',
-function(req, res) {
+app.post('/links', util.checkUser, function(req, res) {
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -97,15 +81,64 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+
+
+app.get('/login', function(req, res) {
+  res.render('login');
+});
+
+app.get('/signup', function(req, res) {
+  res.render('signup');
+});
+
+app.get('/logout', function(req, res) {
+  req.session.destroy(function() {
+    res.redirect('/login');
+  })
+});
+
 app.post('/signup', function(req, res) {
   var un = req.body.username;
   var pw = req.body.password;
-  new User( {username: un}, {password: pw} ).save().then(function(user){
-    res.send(200, user);
+  new User( {username: un} ).fetch().then(function(user) {
+    if(!user) {
+      var newUser = new User({
+        username: un,
+        password: pw
+      });
+      newUser.save().then(function(savedUser) {
+        util.createSession(req, res, savedUser);
+      });
+    } else {
+      console.log('account already exists');
+      res.redirect('signup');
+    }
   });
 });
 
-
+app.post('/login', function(req, res) {
+  // get un and pw off of req
+  var un = req.body.username;
+  var pw = req.body.password;
+  //fetch the user and see if it exists
+  var user = new User({username: un}).fetch().then(function(user) {
+    if(!user) {
+      //redirect to login
+      res.redirect('/login');
+    } else {
+      //compare the provided pw with the acutal  password
+      user.comparePassword(pw, function(match) {
+         //matches --> create a session
+         if(match) {
+           util.createSession(req, res, user);
+         } else {
+         // doesn't match --> redirect to login
+           res.redirect('/login');
+         }
+      });
+    }
+  });
+});
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
